@@ -1155,13 +1155,28 @@ let galAutoTimer=null;
 
 async function loadGallery(){
   // revoke 之前的 object url 避免内存泄漏
-  GALLERY.forEach(g=>g.url&&URL.revokeObjectURL(g.url));
+  GALLERY.forEach(g=>{if(g.url&&g.url.startsWith('blob:'))URL.revokeObjectURL(g.url);});
   let recs=[];
   try{recs=await Storage.list()}catch(e){console.warn('Storage list failed:',e)}
-  GALLERY=recs.map(r=>({
+
+  const staticPhotos = [
+    '07E23BE7-F220-4EE3-8FD9-34BA1554ADFC_1_105_cmzh.jpeg',
+    '96289671-0F7A-4427-8546-F4E07975B881_1_105_cmzh.jpeg',
+    '99790122-D275-4981-B62B-78C9EE66F557_1_105_cmzh.jpeg',
+    'A8C35B25-66C2-4158-9E2E-8617F848F873_1_105_cmzh.jpeg',
+    'D247BD9F-5584-474E-8572-4E2E6D62BE69_1_105_cmzh.jpeg',
+    'EDE47711-6614-494B-929F-8F8C61471D42_1_105_cmzh.jpeg',
+    'F21D634B-90F1-4D69-B08A-82ECE010E9B8_1_105_cmzh.jpeg',
+    'FA4880EE-9267-4277-9C86-5174D7AD9733_1_105_cmzh.jpeg'
+  ];
+  const staticGallery = staticPhotos.map((name, i) => ({
+    id: 'static_'+i, title: '静态照片 '+(i+1), name: name, size: 0, createdAt: Date.now(), url: name
+  }));
+
+  GALLERY=[...staticGallery, ...recs.map(r=>({
     id:r.id,title:r.title,name:r.name,size:r.size,createdAt:r.createdAt,
     url:URL.createObjectURL(r.blob)
-  }));
+  }))];
   renderGallery();
 }
 
