@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容生成工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --border-color: #f0f0f0;
+            --text-main: #222222;
+            --text-muted: #888888;
+            --primary: #ff2442;
+            --primary-hover: #e01e38;
+            --active-bg: #fff0f2;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden; /* 防止整个页面滚动，仅主内容区滚动 */
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 0 24px 16px;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            margin: 4px 12px;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+            background-color: #f9f9f9;
+        }
+
+        .tab.active {
+            background-color: var(--active-bg);
+            color: var(--primary);
+            position: relative;
+            font-weight: 600;
+        }
+
+        /* 选中的红条指示器 */
+        .tab.active::before {
+            content: '';
+            position: absolute;
+            left: 0px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 20px;
+            width: 4px;
+            background-color: var(--primary);
+            border-radius: 4px;
+        }
+
+        .tab-add {
+            padding: 12px 20px;
+            margin: 12px 12px 4px;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            border: 1px dashed var(--primary);
+            justify-content: center;
+            gap: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .tab-add:hover {
+            background-color: var(--active-bg);
+        }
+
+        /* 主体内容 */
+        .main-container {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .grid-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background-color: var(--bg-card);
+            border: none;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .panel-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background-color: var(--primary);
+            border-radius: 4px;
+        }
+
+        /* 左侧面板内容 */
+        .cover-placeholder {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background-color: #f9fafb;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            resize: vertical;
+            background-color: white;
+            color: var(--text-main);
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 36, 66, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .btn-outline {
+            background-color: white;
+            border: 1px solid #d1d5db;
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background-color: var(--active-bg);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 100px;
+            box-shadow: 0 4px 12px rgba(255, 36, 66, 0.25);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(255, 36, 66, 0.35);
+        }
+
+        /* 右侧面板内容 */
+        .main-image-display {
+            width: 100%;
+            aspect-ratio: 1/1;
+            background-color: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            overflow: hidden;
+        }
+
+        .main-image-display img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .thumbnails-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .thumbnail-box {
+            aspect-ratio: 1/1;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            background-color: #f9fafb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            overflow: hidden;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .thumbnail-box:hover {
+            border-color: #d1d5db;
+            background-color: #f3f4f6;
+        }
+
+        .thumbnail-box.active {
+            border: 2px solid var(--primary);
+        }
+        
+        .thumbnail-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        /* add a decorative background shape */
+        #login-overlay::before {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(to right, #ff2442, #ff7a8a);
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            top: -100px;
+            right: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        #login-overlay::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.2;
+            bottom: -50px;
+            left: -50px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(30px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            padding: 48px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .login-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            background: rgba(255,255,255,0.9);
+            transition: all 0.3s;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(255, 36, 66, 0.1);
+            background: #fff;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, #ff4b63 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 8px 20px rgba(255, 36, 66, 0.25);
+            margin-top: 8px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(255, 36, 66, 0.35);
+        }
+
+        .login-error {
+            color: var(--primary);
+            font-size: 13px;
+            text-align: center;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        @media (max-width: 900px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 登录界面 -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>欢迎回来</h1>
+                <p>登录小红书文案生成系统</p>
+            </div>
+            <div class="login-input-group">
+                <input type="text" id="login-username" class="login-input" placeholder="用户名 (admin)" autocomplete="off">
+                <input type="password" id="login-password" class="login-input" placeholder="密码 (123456)">
+            </div>
+            <div class="login-error" id="login-error">用户名或密码错误</div>
+            <button class="login-btn" onclick="handleLogin()">立即登录</button>
+        </div>
+    </div>
+
+    <!-- 侧边栏：物品列表 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            工作区
+        </div>
+        <div class="tab active">物品 1</div>
+        <div class="tab">物品 2</div>
+        <div class="tab-add" title="添加新物品">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            新增物品
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="main-container">
+        <div class="grid-layout">
+            
+            <!-- 左侧面板：源信息与操作区 -->
+            <div class="panel">
+                <div class="panel-title">物品信息源</div>
+                
+                <!-- 主图预览区 -->
+                <div class="main-image-display" id="main-img-display">
+                    <span>主图展示区</span>
+                </div>
+
+                <!-- 缩略图上传区 -->
+                <div class="thumbnails-row">
+                    <div class="thumbnail-box active" onclick="selectThumbnail(0)" id="thumb-0">
+                        <input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, 0)" title="点击上传图一">
+                        <span>图一 (+)</span>
+                    </div>
+                    <div class="thumbnail-box" onclick="selectThumbnail(1)" id="thumb-1">
+                        <input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, 1)" title="点击上传图二">
+                        <span>图二 (+)</span>
+                    </div>
+                    <div class="thumbnail-box" onclick="selectThumbnail(2)" id="thumb-2">
+                        <input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, 2)" title="点击上传图三">
+                        <span>图三 (+)</span>
+                    </div>
+                </div>
+
+                <!-- 输入信息 -->
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">名称</label>
+                    <input type="text" id="item-name" placeholder="请输入物品名称，例如：索尼降噪耳机">
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">产品品类</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="category-level1" onchange="updateSubCategory()" style="flex: 1;">
+                            <option value="">请选择主类目</option>
+                            <option value="护肤类">护肤类</option>
+                            <option value="彩妆类">彩妆类</option>
+                            <option value="清洁类">清洁类</option>
+                            <option value="防晒类">防晒类</option>
+                            <option value="身体护理 & 香氛">身体护理 & 香氛</option>
+                        </select>
+                        <select id="category-level2" style="flex: 1;">
+                            <option value="">请选择子类目</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">目标人群</label>
+                    <select id="target-audience">
+                        <option value="学生党（18-22岁，平价首选）">学生党（18-22岁，平价首选）</option>
+                        <option value="职场新人（23-28岁，轻熟养成）">职场新人（23-28岁，轻熟养成）</option>
+                        <option value="轻熟女性（28-35岁，抗初老起步）">轻熟女性（28-35岁，抗初老起步）</option>
+                        <option value="熟龄女性（35+，抗老刚需）">熟龄女性（35+，抗老刚需）</option>
+                        <option value="男士护肤">男士护肤</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">文案风格</label>
+                    <select id="copy-style">
+                        <option value="闺蜜种草风（小红书爆款款）">闺蜜种草风（小红书爆款款）</option>
+                        <option value="理性测评风（成分党+数据党）">理性测评风（成分党+数据党）</option>
+                        <option value="专业背书风（医生/实验室口吻）">专业背书风（医生/实验室口吻）</option>
+                        <option value="高级氛围风（克制留白、文艺质感）">高级氛围风（克制留白、文艺质感）</option>
+                        <option value="直播带货风（紧迫感+爆点密集）">直播带货风（紧迫感+爆点密集）</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">使用场景</label>
+                    <select id="usage-scenario">
+                        <option value="日常护理（早C晚A）">日常护理（早C晚A）</option>
+                        <option value="熬夜急救（打工人救星）">熬夜急救（打工人救星）</option>
+                        <option value="换季敏感期（泛红刺痛）">换季敏感期（泛红刺痛）</option>
+                        <option value="约会/重要场合（精致出片）">约会/重要场合（精致出片）</option>
+                        <option value="通勤职场（快速精致）">通勤职场（快速精致）</option>
+                    </select>
+                </div>
+
+                <!-- 底部操作按钮 -->
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                    <button class="btn btn-outline" style="flex: 1;" onclick="saveCurrentItem()">💾 保存物品</button>
+                    <button class="btn btn-primary" id="generate-btn" style="flex: 2;" onclick="simulateGeneration()">✨ 一键生成</button>
+                </div>
+            </div>
+
+            <!-- 右侧面板：生成结果 -->
+            <div class="panel">
+                <div class="panel-title">生成结果区</div>
+                
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">生成的封面 (API预留位)</label>
+                    <div class="cover-placeholder">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span>暂无封面图，等待接入 AI 生成</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">标题</label>
+                    <div class="input-with-button">
+                        <input type="text" id="gen-title" placeholder="生成的标题将显示在这里..." readonly>
+                        <button class="btn btn-outline" onclick="copyText('gen-title')">复制</button>
+                    </div>
+                </div>
+
+                <div class="input-group" style="flex: 1;">
+                    <label style="font-size: 14px; color: var(--text-muted); font-weight: 500;">正文</label>
+                    <div class="input-with-button" style="height: 100%;">
+                        <textarea id="gen-body" placeholder="生成的正文将显示在这里..." readonly></textarea>
+                        <button class="btn btn-outline" onclick="copyText('gen-body')">复制</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 登录逻辑
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            if (isLoggedIn) {
+                const overlay = document.getElementById('login-overlay');
+                overlay.style.display = 'none';
+            }
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+
+            if (user === 'admin' && pass === '123456') {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                const overlay = document.getElementById('login-overlay');
+                overlay.style.opacity = '0';
+                overlay.style.visibility = 'hidden';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 500);
+            } else {
+                errorEl.style.opacity = '1';
+                setTimeout(() => {
+                    errorEl.style.opacity = '0';
+                }, 3000);
+            }
+        }
+
+        // 绑定回车键登录
+        document.addEventListener('DOMContentLoaded', () => {
+            const passInput = document.getElementById('login-password');
+            if (passInput) {
+                passInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        handleLogin();
+                    }
+                });
+            }
+        });
+
+        // 复制文本功能
+        function copyText(elementId) {
+            const el = document.getElementById(elementId);
+            if(el.value) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    alert('复制成功！');
+                }).catch(err => {
+                    alert('复制失败，请手动复制');
+                });
+            } else {
+                alert('文本框是空的，没有可复制的内容哦！');
+            }
+        }
+
+        // 图片状态管理
+        let images = [null, null, null];
+        let currentActiveIndex = 0;
+
+        // 切换缩略图
+        function selectThumbnail(index) {
+            document.querySelectorAll('.thumbnail-box').forEach((box, i) => {
+                if (i === index) {
+                    box.classList.add('active');
+                } else {
+                    box.classList.remove('active');
+                }
+            });
+            currentActiveIndex = index;
+            
+            const mainDisplay = document.getElementById('main-img-display');
+            if (images[index]) {
+                mainDisplay.innerHTML = `<img src="${images[index]}" alt="主图预览">`;
+            } else {
+                mainDisplay.innerHTML = `<span>暂无图片</span>`;
+            }
+        }
+
+        // 处理图片上传
+        function handleImageUpload(event, index) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > 800 || h > 800) {
+                            const ratio = Math.min(800/w, 800/h);
+                            w *= ratio; h *= ratio;
+                        }
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const imgUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        images[index] = imgUrl;
+                        
+                        const thumbBox = document.getElementById(`thumb-${index}`);
+                        thumbBox.innerHTML = `<img src="${imgUrl}" alt="图${index+1}"><input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, ${index})" title="点击更换图片">`;
+                        
+                        if (currentActiveIndex === index) {
+                            selectThumbnail(index);
+                        }
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 产品品类数据
+        const categoryData = {
+            "护肤类": ["面霜", "精华", "面膜", "水乳", "眼霜"],
+            "彩妆类": ["口红", "粉底", "眼影", "腮红", "睫毛膏"],
+            "清洁类": ["洁面", "卸妆", "磨砂", "清洁面膜"],
+            "防晒类": ["防晒霜", "防晒喷雾", "隔离"],
+            "身体护理 & 香氛": ["身体乳", "护手霜", "香水", "沐浴"]
+        };
+
+        // 更新子类目
+        function updateSubCategory() {
+            const level1 = document.getElementById('category-level1').value;
+            const level2 = document.getElementById('category-level2');
+            
+            // 清空现有选项
+            level2.innerHTML = '<option value="">请选择子类目</option>';
+            
+            if (level1 && categoryData[level1]) {
+                categoryData[level1].forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.text = item;
+                    level2.appendChild(option);
+                });
+            }
+        }
+
+        let savedItems = JSON.parse(localStorage.getItem('mySavedItems')) || [
+            { id: 1, name: '物品 1', thumbnail: null },
+            { id: 2, name: '物品 2', thumbnail: null }
+        ];
+
+        // 渲染侧边栏
+        function renderSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const tabsHTML = savedItems.map((item, index) => {
+                let innerHTML = `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</span>`;
+                if (item.thumbnail) {
+                    innerHTML = `<img src="${item.thumbnail}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover; margin-right: 8px;"> ` + innerHTML;
+                }
+                return `<div class="tab" id="sidebar-tab-${index}" onclick="switchTab(${index})">${innerHTML}</div>`;
+            }).join('');
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-header">工作区</div>
+                ${tabsHTML}
+                <div class="tab-add" title="添加新物品" onclick="addNewItem()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新增物品
+                </div>
+            `;
+            
+            // 默认选中第一个或当前活跃的
+            const activeTab = document.querySelector('.sidebar .tab.active') || document.getElementById('sidebar-tab-0');
+            if (activeTab) activeTab.classList.add('active');
+        }
+
+        function switchTab(index) {
+            document.querySelectorAll('.sidebar .tab').forEach((tab, i) => {
+                if (i === index) tab.classList.add('active');
+                else tab.classList.remove('active');
+            });
+            
+            const item = savedItems[index];
+            if (item) {
+                document.getElementById('item-name').value = item.name || '';
+                if (item.cat1) document.getElementById('category-level1').value = item.cat1;
+                updateSubCategory(); // 同步更新二级菜单
+                if (item.cat2) document.getElementById('category-level2').value = item.cat2;
+                if (item.audience) document.getElementById('target-audience').value = item.audience;
+                if (item.style) document.getElementById('copy-style').value = item.style;
+                if (item.scenario) document.getElementById('usage-scenario').value = item.scenario;
+                
+                images = item.images ? [...item.images] : [null, null, null];
+                for (let i = 0; i < 3; i++) {
+                    const thumbBox = document.getElementById(`thumb-${i}`);
+                    if (images[i]) {
+                        thumbBox.innerHTML = `<img src="${images[i]}" alt="图${i+1}"><input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, ${i})" title="点击更换图片">`;
+                    } else {
+                        thumbBox.innerHTML = `图${i+1} (+)<input type="file" class="file-input" accept="image/*" onchange="handleImageUpload(event, ${i})">`;
+                    }
+                }
+                selectThumbnail(0);
+            }
+        }
+
+        function addNewItem() {
+            savedItems.push({ id: Date.now(), name: `物品 ${savedItems.length + 1}`, thumbnail: null });
+            localStorage.setItem('mySavedItems', JSON.stringify(savedItems));
+            renderSidebar();
+            switchTab(savedItems.length - 1);
+        }
+
+        // 保存当前物品到本地存储并更新侧边栏
+        async function saveCurrentItem() {
+            const name = document.getElementById('item-name').value;
+            if (!name) {
+                alert('请先输入物品名称再保存！');
+                return;
+            }
+            
+            const originalThumb = images[0] || images[1] || images[2]; 
+            let smallThumb = originalThumb;
+            
+            // 如果图片太大，压缩成小图标，防止撑爆 localStorage
+            if (originalThumb && originalThumb.length > 50000) { 
+                 smallThumb = await new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 64; 
+                        canvas.height = 64;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, 64, 64);
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
+                    };
+                    img.onerror = () => resolve(originalThumb);
+                    img.src = originalThumb;
+                 });
+            }
+            
+            // 找到当前高亮的 tab 索引
+            let activeIndex = 0;
+            document.querySelectorAll('.sidebar .tab').forEach((tab, index) => {
+                if (tab.classList.contains('active')) activeIndex = index;
+            });
+
+            if (savedItems[activeIndex]) {
+                savedItems[activeIndex].name = name;
+                savedItems[activeIndex].thumbnail = smallThumb;
+                
+                // 将所有表单数据和图片存入对象中
+                savedItems[activeIndex].images = [...images];
+                savedItems[activeIndex].cat1 = document.getElementById('category-level1').value;
+                savedItems[activeIndex].cat2 = document.getElementById('category-level2').value;
+                savedItems[activeIndex].audience = document.getElementById('target-audience').value;
+                savedItems[activeIndex].style = document.getElementById('copy-style').value;
+                savedItems[activeIndex].scenario = document.getElementById('usage-scenario').value;
+                
+                try {
+                    localStorage.setItem('mySavedItems', JSON.stringify(savedItems));
+                    renderSidebar();
+                    // 这里不用 switchTab，以免刷新当前输入状态，只修改 active class
+                    document.querySelectorAll('.sidebar .tab').forEach((tab, i) => {
+                        if (i === activeIndex) tab.classList.add('active');
+                        else tab.classList.remove('active');
+                    });
+                    alert('✅ 保存成功！物品及所有参数、图片已全套备份。');
+                } catch(e) {
+                    console.error("存储失败", e);
+                    alert('保存失败：本地存储已满或发生错误。');
+                }
+            }
+        }
+        
+        // 页面加载时渲染
+        window.addEventListener('DOMContentLoaded', () => {
+            checkLoginStatus();
+            renderSidebar();
+            if (savedItems.length > 0) {
+                switchTab(0);
+            }
+        });
+
+        // 模拟调用 AI 文本和真实的生图 API
+        async function simulateGeneration() {
+            const name = document.getElementById('item-name').value;
+            const cat1 = document.getElementById('category-level1').value;
+            const cat2 = document.getElementById('category-level2').value;
+            const audience = document.getElementById('target-audience').value;
+            const style = document.getElementById('copy-style').value;
+            const scenario = document.getElementById('usage-scenario').value;
+            const btn = document.getElementById('generate-btn');
+
+            if (!name) {
+                alert('请先在右侧输入物品名称！');
+                return;
+            }
+
+            // 视觉反馈：清空当前结果，让用户知道正在重新生成
+            document.getElementById('gen-title').value = '';
+            document.getElementById('gen-body').value = '';
+
+            const coverPlaceholder = document.querySelector('.cover-placeholder');
+            coverPlaceholder.innerHTML = `<svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg><span style="color:var(--primary); font-weight:600;">正在连线大模型生图中...</span>`;
+
+            btn.innerText = "正在呼叫 AI 生成中...";
+            btn.style.opacity = 0.7;
+            btn.disabled = true;
+
+            const templates = [
+                {
+                    title: `✨绝美神仙好物！${name}简直太绝了，被狠狠惊艳到！`,
+                    body: `家人们谁懂啊！今天给大家挖到了一个宝藏好物——${name}。\n\n💡 核心亮点：\n它的整体质感和体验真的绝绝子，细节满满，完全长在我的审美点上，用过一次就彻底爱上了！\n\n🌟 真实体验：\n拿到手真的被它的硬核实力圈粉了，无论送人还是自用都非常有面子，闭眼入绝不踩雷。\n\n大家赶紧冲鸭！！👇\n\n#好物推荐 #宝藏单品 #提升幸福感的好物`
+                },
+                {
+                    title: `🔥年度爱用榜单TOP1！${name}不允许还有人不知道！`,
+                    body: `哈喽姐妹们！近期最爱的单品非${name}莫属了！简直是我的心头好。\n\n💡 核心亮点：\n设计和使用感都无可挑剔，各方面表现都很抗打，真的是性价比之王！\n\n🌟 真实体验：\n我测试了一段时间，效果真的绝绝子，身边的朋友都被我疯狂安利了。真心建议大家试一试！\n\n冲就完事了！👇\n\n#无限回购 #亲测好用 #良心推荐`
+                },
+                {
+                    title: `高级感拉满💯！${name}开箱测评，这颜值绝了！`,
+                    body: `今天来给大家做一个开箱，主角就是期待已久的${name}。\n\n💡 核心亮点：\n拿在手里非常有分量，做工精细，光看外观就能感受到满满的高级感。\n\n🌟 真实体验：\n这几天每天都在用，体验感极佳，不仅实用还能当做生活中的小点缀，幸福感直线上升！\n\n绝对不会后悔的系列！👇\n\n#开箱日常 #高颜值好物 #生活仪式感`
+                }
+            ];
+
+            // 1. 本地模拟生成文案（快速返回）
+            setTimeout(() => {
+                const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+                document.getElementById('gen-title').value = randomTemplate.title;
+                document.getElementById('gen-body').value = randomTemplate.body;
+            }, 800);
+
+            // 2. 真实调用 Python 转发服务器获取 AI 图片
+            const finalPrompt = `请生成一张精美的产品展示海报。核心物品：${name}。品类参考：${cat1}-${cat2}。受众定位：${audience}。场景氛围：${scenario}。整体质感风格：${style}。画面要求：高级感、灯光细腻、细节丰富。`;
+            let mainImageBase64 = images[currentActiveIndex] || "";
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/generate_image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: finalPrompt,
+                        image: mainImageBase64
+                    })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.data && data.data[0] && data.data[0].url) {
+                    coverPlaceholder.innerHTML = `<img src="${data.data[0].url}" style="width:100%; height:100%; object-fit:cover; border-radius: var(--radius-md);">`;
+                } else {
+                    console.error("API 返回异常:", data);
+                    coverPlaceholder.innerHTML = `<span style="color:red; font-size:12px; text-align:center; padding:10px;">生图失败: <br>${data.error || "大模型未返回合法 URL，请检查后端终端报错"}</span>`;
+                }
+            } catch (err) {
+                console.error("本地服务器请求失败:", err);
+                coverPlaceholder.innerHTML = `<span style="color:red; font-size:12px; text-align:center; padding:10px;">生图失败: <br>无法连接到本地 Python 服务器，请确保 server.py 正在运行！</span>`;
+            }
+
+            // 恢复按钮状态
+            btn.innerText = "重新生成";
+            btn.style.opacity = 1;
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
